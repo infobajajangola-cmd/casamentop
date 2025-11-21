@@ -1,0 +1,7 @@
+{
+  "name": "Lumina Wedding",
+  "description": "A premium wedding guest management system with RSVP tracking, digital tickets, and AI-powered assistance.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
