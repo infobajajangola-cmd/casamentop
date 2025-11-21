@@ -109,10 +109,30 @@
       }
 
       @media print {
+        @page {
+            margin: 0;
+            size: auto;
+        }
+        body { 
+          -webkit-print-color-adjust: exact !important; 
+          print-color-adjust: exact !important; 
+          background-color: white;
+        }
         .no-print { display: none !important; }
         .print-only { display: block !important; }
-        body { background: white; color: black; }
-        .bg-paper { background: white; box-shadow: none; border: none; }
+        
+        /* CRITICAL: Ensure background images and colors are printed */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        #root {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: flex-start;
+        }
       }
     </style>
   <script type="importmap">
@@ -123,6 +143,7 @@
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "recharts": "https://aistudiocdn.com/recharts@^3.4.1",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.45.0",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0"
   }
 }

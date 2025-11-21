@@ -4,23 +4,33 @@ import { getGuests } from '../../services/storageService';
 import { generateGuestMessage, analyzeGuestList as geminiAnalyze } from '../../services/geminiService';
 import { Dashboard } from './Dashboard';
 import { GuestList } from './GuestList';
-import { LayoutDashboard, Users, LogOut, Sparkles, Menu } from 'lucide-react';
+import { CheckInTerminal } from './CheckInTerminal';
+import { LayoutDashboard, Users, LogOut, Sparkles, QrCode } from 'lucide-react';
 
 interface AdminLayoutProps {
   onLogout: () => void;
 }
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
-  const [view, setView] = useState<'dashboard' | 'guests'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'guests' | 'checkin'>('dashboard');
   const [guests, setGuests] = useState<Guest[]>([]);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     refreshData();
   }, []);
 
-  const refreshData = () => {
-    setGuests(getGuests());
+  const refreshData = async () => {
+    setIsLoading(true);
+    try {
+        const data = await getGuests();
+        setGuests(data);
+    } catch (error) {
+        console.error("Failed to refresh guests", error);
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   const handleAnalysis = async () => {
@@ -54,7 +64,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
                 className={`w-full flex items-center gap-4 p-4 rounded-sm transition-all duration-300 group ${view === 'guests' ? 'bg-white/5 text-white border-l-2 border-gold-500' : 'hover:bg-white/5 hover:text-stone-200'}`}
             >
                 <Users size={20} className={`transition-colors ${view === 'guests' ? 'text-gold-400' : 'text-stone-500 group-hover:text-stone-300'}`}/>
-                <span className="hidden lg:block font-sans text-sm tracking-wide uppercase">Guest List</span>
+                <span className="hidden lg:block font-sans text-sm tracking-wide uppercase">Lista de Convidados</span>
+            </button>
+             <button 
+                onClick={() => setView('checkin')}
+                className={`w-full flex items-center gap-4 p-4 rounded-sm transition-all duration-300 group ${view === 'checkin' ? 'bg-white/5 text-white border-l-2 border-gold-500' : 'hover:bg-white/5 hover:text-stone-200'}`}
+            >
+                <QrCode size={20} className={`transition-colors ${view === 'checkin' ? 'text-gold-400' : 'text-stone-500 group-hover:text-stone-300'}`}/>
+                <span className="hidden lg:block font-sans text-sm tracking-wide uppercase">Check-in Terminal</span>
             </button>
         </nav>
 
@@ -73,8 +90,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
       <main className="flex-1 ml-20 lg:ml-72 p-8 lg:p-12 overflow-y-auto bg-stone-50">
         <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-                <h1 className="font-display text-4xl text-stone-900 capitalize">{view}</h1>
-                <p className="font-serif text-stone-500 italic mt-1">Overview of your event status</p>
+                <h1 className="font-display text-4xl text-stone-900 capitalize">
+                    {view === 'guests' ? 'Lista de Convidados' : view === 'checkin' ? 'Portaria' : 'Dashboard'}
+                </h1>
+                <p className="font-serif text-stone-500 italic mt-1">Visão geral do evento Alexandre & Adália</p>
             </div>
             {view === 'guests' && (
                 <button 
@@ -99,8 +118,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout }) => {
         )}
 
         <div className="animate-fade-in-up">
-            {view === 'dashboard' && <Dashboard guests={guests} />}
-            {view === 'guests' && <GuestList guests={guests} refreshData={refreshData} />}
+            {isLoading && view !== 'checkin' ? (
+                <div className="flex justify-center py-20 text-stone-400 animate-pulse tracking-widest uppercase text-sm">Carregando dados...</div>
+            ) : (
+                <>
+                    {view === 'dashboard' && <Dashboard guests={guests} />}
+                    {view === 'guests' && <GuestList guests={guests} refreshData={refreshData} />}
+                    {view === 'checkin' && <CheckInTerminal />}
+                </>
+            )}
         </div>
       </main>
     </div>

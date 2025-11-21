@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Guest, RSVPStatus } from '../../types';
 import { saveGuest } from '../../services/storageService';
@@ -16,6 +15,7 @@ export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
   const [currentGuest, setCurrentGuest] = useState<Guest>(guest);
   const [companions, setCompanions] = useState<number>(guest.confirmedCompanions);
   const [companionNames, setCompanionNames] = useState<string>(guest.companionDetails || '');
+  const [isSaving, setIsSaving] = useState(false);
   
   // UI States
   const [step, setStep] = useState<'rsvp' | 'details' | 'thank_you' | 'ticket'>('rsvp');
@@ -42,22 +42,30 @@ export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
       }
   };
 
-  const handleSave = (finalStatus: RSVPStatus) => {
+  const handleSave = async (finalStatus: RSVPStatus) => {
+    setIsSaving(true);
     const toSave = {
         ...currentGuest,
         status: finalStatus,
         confirmedCompanions: finalStatus === RSVPStatus.CONFIRMED ? companions : 0,
         companionDetails: finalStatus === RSVPStatus.CONFIRMED ? companionNames : ''
     };
-    saveGuest(toSave);
-    setCurrentGuest(toSave);
     
-    if (finalStatus === RSVPStatus.CONFIRMED) {
-        setStep('thank_you');
-        // Auto transition to ticket after animation
-        setTimeout(() => setStep('ticket'), 3000);
-    } else {
-        onBack(); // Or show a "Sorry to miss you" screen
+    try {
+        await saveGuest(toSave);
+        setCurrentGuest(toSave);
+        
+        if (finalStatus === RSVPStatus.CONFIRMED) {
+            setStep('thank_you');
+            // Auto transition to ticket after animation
+            setTimeout(() => setStep('ticket'), 3000);
+        } else {
+            onBack(); 
+        }
+    } catch (error) {
+        alert("Ocorreu um erro ao salvar. Tente novamente.");
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -148,8 +156,8 @@ export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
              )}
 
              <div className="flex gap-3 mt-8">
-                 <Button variant="outline" className="flex-1" onClick={() => setStep('rsvp')}>Voltar</Button>
-                 <Button className="flex-1" onClick={() => handleSave(RSVPStatus.CONFIRMED)}>Finalizar</Button>
+                 <Button variant="outline" className="flex-1" onClick={() => setStep('rsvp')} disabled={isSaving}>Voltar</Button>
+                 <Button className="flex-1" onClick={() => handleSave(RSVPStatus.CONFIRMED)} isLoading={isSaving}>Finalizar</Button>
              </div>
         </div>
       )
@@ -224,7 +232,8 @@ export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
                 size="lg" 
                 className="w-full"
                 variant={currentGuest.status === RSVPStatus.DECLINED ? 'secondary' : 'primary'}
-                disabled={currentGuest.status === RSVPStatus.PENDING}
+                disabled={currentGuest.status === RSVPStatus.PENDING || isSaving}
+                isLoading={isSaving}
             >
                 {currentGuest.status === RSVPStatus.DECLINED ? 'Enviar Justificativa' : 'Continuar'}
             </Button>

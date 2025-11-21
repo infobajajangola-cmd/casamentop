@@ -25,6 +25,7 @@ export interface Guest {
   dietaryRestrictions?: string;
   updatedAt: string; // ISO Date
   qrCodeHash: string;
+  checkedInAt?: string;
 }
 
 export interface EventStats {

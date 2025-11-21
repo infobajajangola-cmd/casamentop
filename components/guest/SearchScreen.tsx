@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { searchGuests } from '../../services/storageService';
 import { Guest } from '../../types';
@@ -12,18 +11,27 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ onGuestFound }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Guest[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       if (query.length >= 3) {
-        const found = searchGuests(query);
-        setResults(found);
-        setHasSearched(true);
+        setIsLoading(true);
+        try {
+            const found = await searchGuests(query);
+            setResults(found);
+        } catch (e) {
+            console.error(e);
+            setResults([]);
+        } finally {
+            setIsLoading(false);
+            setHasSearched(true);
+        }
       } else {
         setResults([]);
         setHasSearched(false);
       }
-    }, 300);
+    }, 500); // Increased debounce slightly for network
 
     return () => clearTimeout(timer);
   }, [query]);
@@ -59,22 +67,22 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ onGuestFound }) => {
 
       {/* Results Area - Floating Cards */}
       <div className="w-full max-w-md mt-8 space-y-3 min-h-[120px]">
-        {query.length > 0 && query.length < 3 && (
+        {(isLoading || (query.length > 0 && query.length < 3)) && (
             <p className="text-stone-400 text-sm text-center font-sans tracking-widest animate-pulse">BUSCANDO...</p>
         )}
         
-        {hasSearched && results.length === 0 && query.length >= 3 && (
+        {!isLoading && hasSearched && results.length === 0 && query.length >= 3 && (
              <div className="text-stone-400 text-center animate-fade-in">
                 <p className="font-serif italic text-lg">Nome não encontrado na lista de convidados.</p>
              </div>
         )}
 
-        {results.map((guest, index) => (
+        {!isLoading && results.map((guest, index) => (
             <button
                 key={guest.id}
                 onClick={() => onGuestFound(guest)}
                 className="w-full flex items-center justify-between p-5 bg-white/80 hover:bg-white border border-stone-200 hover:border-gold-300 rounded-sm shadow-sm hover:shadow-md transition-all duration-500 hover:scale-[1.02] group animate-fade-in-up text-left"
-                style={{ animationDelay: `${0.3 + (index * 0.1)}s` }}
+                style={{ animationDelay: `${0.1 + (index * 0.1)}s` }}
             >
                 <div className="flex flex-col">
                     <span className="font-serif text-xl text-stone-800 group-hover:text-gold-700 transition-colors">
