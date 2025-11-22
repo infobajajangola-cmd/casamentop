@@ -1,9 +1,15 @@
-import React, { useMemo } from 'react';
-import { Guest, RSVPStatus } from '../../types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Guest, GuestRSVP, RSVPStatus } from '../../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { getGuestRSVP, getMainEvent } from '../../services/storageService';
 
 interface DashboardProps {
   guests: Guest[];
+}
+
+interface GuestWithRSVP {
+  guest: Guest;
+  rsvp?: GuestRSVP;
 }
 
 const COLORS = {
@@ -13,18 +19,33 @@ const COLORS = {
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ guests }) => {
+  const [guestsWithRSVP, setGuestsWithRSVP] = useState<GuestWithRSVP[]>([]);
+  
+  useEffect(() => {
+    const loadRSVPs = async () => {
+      const guestsWithRSVPData = await Promise.all(
+        guests.map(async (guest) => {
+          const rsvp = await getGuestRSVP(guest.id);
+          return { guest, rsvp };
+        })
+      );
+      setGuestsWithRSVP(guestsWithRSVPData);
+    };
+    
+    loadRSVPs();
+  }, [guests]);
   
   const stats = useMemo(() => {
-    return guests.reduce((acc, guest) => {
+    return guestsWithRSVP.reduce((acc, {guest, rsvp}) => {
         acc.totalGuests++;
-        acc.totalPax += (1 + (guest.status === RSVPStatus.CONFIRMED ? guest.confirmedCompanions : 0));
+        acc.totalPax += (1 + (rsvp?.status === RSVPStatus.CONFIRMED ? (rsvp.adults + rsvp.children - 1) : 0));
         
-        if (guest.status === RSVPStatus.CONFIRMED) acc.confirmed++;
-        if (guest.status === RSVPStatus.DECLINED) acc.declined++;
-        if (guest.status === RSVPStatus.PENDING) acc.pending++;
+        if (rsvp?.status === RSVPStatus.CONFIRMED) acc.confirmed++;
+        if (rsvp?.status === RSVPStatus.DECLINED) acc.declined++;
+        if (!rsvp || rsvp.status === RSVPStatus.PENDING) acc.pending++;
         return acc;
     }, { totalGuests: 0, confirmed: 0, declined: 0, pending: 0, totalPax: 0 });
-  }, [guests]);
+  }, [guestsWithRSVP]);
 
   const pieData = [
     { name: 'Confirmados', value: stats.confirmed },

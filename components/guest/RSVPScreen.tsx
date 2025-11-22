@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Guest, RSVPStatus } from '../../types';
-import { saveGuest } from '../../services/storageService';
+import React, { useState, useEffect } from 'react';
+import { Guest, RSVPStatus, GuestRSVP } from '../../types';
+import { saveGuestRSVP, getGuestRSVP } from '../../services/storageService';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Check, X, Minus, Plus, ArrowLeft, Heart } from 'lucide-react';
@@ -12,29 +12,41 @@ interface RSVPScreenProps {
 }
 
 export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
-  const [currentGuest, setCurrentGuest] = useState<Guest>(guest);
-  const [companions, setCompanions] = useState<number>(guest.confirmedCompanions);
-  const [companionNames, setCompanionNames] = useState<string>(guest.companionDetails || '');
+  const [currentGuest] = useState<Guest>(guest);
+  const [guestRSVP, setGuestRSVP] = useState<GuestRSVP | null>(null);
+  const [companions, setCompanions] = useState<number>(1); // Default: apenas o convidado
+  const [children, setChildren] = useState<number>(0);
+  const [companionNames, setCompanionNames] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   
   // UI States
   const [step, setStep] = useState<'rsvp' | 'details' | 'thank_you' | 'ticket'>('rsvp');
+  const [rsvpStatus, setRsvpStatus] = useState<RSVPStatus>(RSVPStatus.PENDING);
 
-  // If guest is already confirmed when loading
-  React.useEffect(() => {
-      if (guest.status === RSVPStatus.CONFIRMED) {
+  // Carregar RSVP existente e definir estado inicial
+  useEffect(() => {
+    const loadRSVP = async () => {
+      const existingRSVP = await getGuestRSVP(guest.id);
+      if (existingRSVP) {
+        setGuestRSVP(existingRSVP);
+        setRsvpStatus(existingRSVP.status);
+        setCompanions(existingRSVP.adults);
+        setChildren(existingRSVP.children);
+        if (existingRSVP.status === RSVPStatus.CONFIRMED) {
           setStep('ticket');
+        }
       }
-  }, [guest.status]);
+    };
+    loadRSVP();
+  }, [guest.id]);
 
 
   const handleStatusChange = (status: RSVPStatus) => {
-    const updated = { ...currentGuest, status };
-    setCurrentGuest(updated);
+    setRsvpStatus(status);
   };
 
   const handleNext = () => {
-      if (currentGuest.status === RSVPStatus.CONFIRMED) {
+      if (rsvpStatus === RSVPStatus.CONFIRMED) {
           setStep('details');
       } else {
           // Declined
@@ -44,16 +56,20 @@ export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
 
   const handleSave = async (finalStatus: RSVPStatus) => {
     setIsSaving(true);
-    const toSave = {
-        ...currentGuest,
-        status: finalStatus,
-        confirmedCompanions: finalStatus === RSVPStatus.CONFIRMED ? companions : 0,
-        companionDetails: finalStatus === RSVPStatus.CONFIRMED ? companionNames : ''
-    };
     
     try {
-        await saveGuest(toSave);
-        setCurrentGuest(toSave);
+        const rsvpData: GuestRSVP = {
+            id: guestRSVP?.id || crypto.randomUUID(),
+            guestId: guest.id,
+            status: finalStatus,
+            adults: finalStatus === RSVPStatus.CONFIRMED ? companions : 0,
+            children: finalStatus === RSVPStatus.CONFIRMED ? children : 0,
+            updatedAt: new Date().toISOString(),
+            eventId: undefined // Pode ser preenchido se houver evento principal
+        };
+        
+        await saveGuestRSVP(rsvpData);
+        setGuestRSVP(rsvpData);
         
         if (finalStatus === RSVPStatus.CONFIRMED) {
             setStep('thank_you');
@@ -114,26 +130,47 @@ export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
                 </p>
              </div>
 
-             {currentGuest.maxCompanions > 0 ? (
+             {guest.maxAdults + guest.maxChildren > 1 ? (
                  <div className="space-y-6">
                     <div className="flex items-center justify-center gap-8 py-4 border-b border-stone-200">
                         <button 
-                            onClick={() => setCompanions(Math.max(0, companions - 1))}
+                            onClick={() => setCompanions(Math.max(1, companions - 1))}
                             className="w-12 h-12 rounded-full border border-stone-300 flex items-center justify-center text-stone-400 hover:border-stone-900 hover:text-stone-900 transition-colors"
                         >
                             <Minus size={20} />
                         </button>
                         <div className="text-center w-16">
                             <span className="font-display text-4xl text-stone-800 block">{companions}</span>
-                            <span className="text-[10px] uppercase text-stone-400 tracking-wider">Pessoas</span>
+                            <span className="text-[10px] uppercase text-stone-400 tracking-wider">Adultos</span>
                         </div>
                         <button 
-                            onClick={() => setCompanions(Math.min(currentGuest.maxCompanions, companions + 1))}
+                            onClick={() => setCompanions(Math.min(guest.maxAdults, companions + 1))}
                             className="w-12 h-12 rounded-full border border-stone-300 flex items-center justify-center text-stone-400 hover:border-stone-900 hover:text-stone-900 transition-colors"
                         >
                             <Plus size={20} />
                         </button>
                     </div>
+                    
+                    {guest.maxChildren > 0 && (
+                        <div className="flex items-center justify-center gap-8 py-4 border-b border-stone-200">
+                            <button 
+                                onClick={() => setChildren(Math.max(0, children - 1))}
+                                className="w-12 h-12 rounded-full border border-stone-300 flex items-center justify-center text-stone-400 hover:border-stone-900 hover:text-stone-900 transition-colors"
+                            >
+                                <Minus size={20} />
+                            </button>
+                            <div className="text-center w-16">
+                                <span className="font-display text-4xl text-stone-800 block">{children}</span>
+                                <span className="text-[10px] uppercase text-stone-400 tracking-wider">Crianças</span>
+                            </div>
+                            <button 
+                                onClick={() => setChildren(Math.min(guest.maxChildren, children + 1))}
+                                className="w-12 h-12 rounded-full border border-stone-300 flex items-center justify-center text-stone-400 hover:border-stone-900 hover:text-stone-900 transition-colors"
+                            >
+                                <Plus size={20} />
+                            </button>
+                        </div>
+                    )}
                     
                     {companions > 0 && (
                         <div className="animate-fade-in space-y-2">
@@ -151,7 +188,7 @@ export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
                  </div>
              ) : (
                  <div className="text-center py-4 text-stone-500 italic">
-                     Este convite é individual e não permite acompanhantes.
+                     Este convite é individual e não permite acompanhantes adicionais.
                  </div>
              )}
 
@@ -186,7 +223,10 @@ export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
              <h1 className="font-display text-4xl md:text-5xl text-stone-900">{currentGuest.name}</h1>
              <div className="w-16 h-[1px] bg-gold-500 mx-auto my-4"></div>
              <p className="font-serif text-stone-500 italic text-lg">
-                Solicitamos a honra de sua presença<br/>no dia 29 de Novembro de 2025
+                Solicitamos a honra de sua presença<br/>no dia 29 de Novembro de 2025<br/>
+                <span className="text-sm text-stone-400">
+                  Você pode levar até {guest.maxAdults} adulto(s) e {guest.maxChildren} criança(s)
+                </span>
              </p>
         </div>
 
@@ -197,16 +237,16 @@ export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
                     onClick={() => handleStatusChange(RSVPStatus.CONFIRMED)}
                     className={`
                     relative overflow-hidden p-6 border transition-all duration-500 group
-                    ${currentGuest.status === RSVPStatus.CONFIRMED 
+                    ${rsvpStatus === RSVPStatus.CONFIRMED 
                         ? 'border-gold-600 bg-gold-50 text-stone-900' 
                         : 'border-stone-200 text-stone-400 hover:border-gold-300 hover:text-gold-700'}
                     `}
                 >
                     <div className="flex flex-col items-center gap-3 relative z-10">
-                        <Check className={`w-6 h-6 ${currentGuest.status === RSVPStatus.CONFIRMED ? 'text-gold-600' : 'opacity-50'}`} />
+                        <Check className={`w-6 h-6 ${rsvpStatus === RSVPStatus.CONFIRMED ? 'text-gold-600' : 'opacity-50'}`} />
                         <span className="font-display text-sm tracking-wider font-bold">Confirmar</span>
                     </div>
-                    {currentGuest.status === RSVPStatus.CONFIRMED && (
+                    {rsvpStatus === RSVPStatus.CONFIRMED && (
                         <div className="absolute inset-0 border-2 border-gold-500 opacity-20 animate-pulse"></div>
                     )}
                 </button>
@@ -215,7 +255,7 @@ export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
                     onClick={() => handleStatusChange(RSVPStatus.DECLINED)}
                     className={`
                     p-6 border transition-all duration-500
-                    ${currentGuest.status === RSVPStatus.DECLINED
+                    ${rsvpStatus === RSVPStatus.DECLINED
                         ? 'border-stone-800 bg-stone-100 text-stone-900' 
                         : 'border-stone-200 text-stone-400 hover:border-stone-400 hover:text-stone-600'}
                     `}
@@ -231,11 +271,11 @@ export const RSVPScreen: React.FC<RSVPScreenProps> = ({ guest, onBack }) => {
                 onClick={handleNext} 
                 size="lg" 
                 className="w-full"
-                variant={currentGuest.status === RSVPStatus.DECLINED ? 'secondary' : 'primary'}
-                disabled={currentGuest.status === RSVPStatus.PENDING || isSaving}
+                variant={rsvpStatus === RSVPStatus.DECLINED ? 'secondary' : 'primary'}
+                disabled={rsvpStatus === RSVPStatus.PENDING || isSaving}
                 isLoading={isSaving}
             >
-                {currentGuest.status === RSVPStatus.DECLINED ? 'Enviar Justificativa' : 'Continuar'}
+                {rsvpStatus === RSVPStatus.DECLINED ? 'Enviar Justificativa' : 'Continuar'}
             </Button>
         </div>
       </div>

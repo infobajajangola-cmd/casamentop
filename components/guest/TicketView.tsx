@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Guest } from '../../types';
+import { Guest, GuestRSVP, RSVPStatus } from '../../types';
 import { QrCode, Download, Share2, Sparkles, MapPin, Navigation } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { getGuestRSVP } from '../../services/storageService';
 
 interface TicketViewProps {
   guest: Guest;
@@ -9,6 +10,25 @@ interface TicketViewProps {
 
 export const TicketView: React.FC<TicketViewProps> = ({ guest }) => {
   const [moodIndex, setMoodIndex] = useState(0);
+  const [rsvp, setRsvp] = useState<GuestRSVP | null>(null);
+  const [qrCodeHash, setQrCodeHash] = useState<string>('');
+
+  useEffect(() => {
+    // Carregar RSVP do convidado
+    const loadRSVP = async () => {
+      const guestRSVP = await getGuestRSVP(guest.id);
+      setRsvp(guestRSVP);
+    };
+    loadRSVP();
+
+    // Gerar QR Code único baseado no ID do convidado
+    const generateQRCode = () => {
+      const timestamp = Date.now().toString(36);
+      const guestId = guest.id.substring(0, 8);
+      return `${guestId.toUpperCase()}-${timestamp.toUpperCase()}`;
+    };
+    setQrCodeHash(generateQRCode());
+  }, [guest.id]);
 
   // Configurações para o efeito "Vivo"
   // Cada estado representa um "clima" diferente das flores (Cor, Posição, Escala)
@@ -123,13 +143,13 @@ export const TicketView: React.FC<TicketViewProps> = ({ guest }) => {
                     </h1>
                     <div className="flex flex-col items-center gap-1">
                         <p className="text-sm font-serif text-gold-700 italic font-medium">
-                            {guest.confirmedCompanions > 0 
-                                ? `Acompanhado por ${guest.confirmedCompanions} pessoa(s)` 
+                            {rsvp?.status === RSVPStatus.CONFIRMED 
+                                ? `Acompanhado por ${(rsvp?.adults || 0) + (rsvp?.children || 0)} pessoa(s)` 
                                 : 'Entrada Individual'}
                         </p>
-                        {guest.companionDetails && (
+                        {guest.category && (
                             <p className="text-xs font-serif text-stone-400 mt-1 max-w-xs mx-auto border-b border-stone-100 pb-1">
-                                {guest.companionDetails}
+                                Categoria: {guest.category}
                             </p>
                         )}
                     </div>
@@ -188,7 +208,7 @@ export const TicketView: React.FC<TicketViewProps> = ({ guest }) => {
                          </div>
                     </div>
                     <div>
-                        <p className="text-[9px] font-mono text-gold-400 tracking-widest mb-1">{guest.qrCodeHash.toUpperCase()}</p>
+                        <p className="text-[9px] font-mono text-gold-400 tracking-widest mb-1">{qrCodeHash}</p>
                         <p className="text-xs font-serif text-stone-500 italic">Apresente este código na recepção</p>
                     </div>
                 </div>

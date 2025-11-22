@@ -1,12 +1,14 @@
 {
   "name": "lumina-wedding",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Aplicação completa de convites de casamento com RSVP e gestão de convidados",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:check": "npm run build && npm run preview"
   },
   "dependencies": {
     "react": "^19.2.0",
@@ -21,5 +23,19 @@
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
-  }
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "author": "Alexandre & Adália",
+  "keywords": [
+    "wedding",
+    "invitation",
+    "rsvp",
+    "guest-management",
+    "react",
+    "vite",
+    "supabase"
+  ]
 }

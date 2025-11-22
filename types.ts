@@ -1,31 +1,56 @@
 export enum RSVPStatus {
-  PENDING = 'PENDING',
-  CONFIRMED = 'CONFIRMED',
-  DECLINED = 'DECLINED'
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  DECLINED = 'declined'
 }
 
 export enum GuestCategory {
-  FAMILY = 'Family',
-  FRIEND = 'Friend',
-  WORK = 'Work',
+  FAMILY = 'Família',
+  FRIEND = 'Amigo',
+  WORK = 'Trabalho',
   VIP = 'VIP'
 }
 
 export interface Guest {
   id: string;
   name: string;
-  email?: string;
-  phone?: string;
-  category: GuestCategory;
-  maxCompanions: number;
-  confirmedCompanions: number;
-  companionDetails?: string; // Stores names of companions
+  category?: GuestCategory;
+  maxAdults: number;
+  maxChildren: number;
+  createdAt: string; // ISO Date
+  rsvpStatus?: RSVPStatus;
+  confirmedAdults?: number;
+  confirmedChildren?: number;
+  rsvpDate?: string; // ISO Date
+}
+
+export interface GuestRSVP {
+  id: string;
+  guestId: string;
   status: RSVPStatus;
-  tableNumber?: number;
-  dietaryRestrictions?: string;
+  adults: number;
+  children: number;
+  companionNames?: string[]; // Nomes dos acompanhantes
   updatedAt: string; // ISO Date
-  qrCodeHash: string;
-  checkedInAt?: string;
+  eventId?: string;
+}
+
+export interface GuestCheckIn {
+  id: string;
+  eventId: string;
+  guestId: string;
+  adults: number;
+  children: number;
+  checkedBy?: string;
+  checkedAt: string; // ISO Date
+}
+
+export interface InvitationToken {
+  id: string;
+  guestId: string;
+  token: string;
+  generatedAt: string; // ISO Date
+  usedAt?: string; // ISO Date
 }
 
 export interface EventStats {

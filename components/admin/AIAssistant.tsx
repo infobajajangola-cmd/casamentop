@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
-import { Guest } from '../../types';
+import { Guest, GuestRSVP } from '../../types';
 import { generateGuestMessage } from '../../services/geminiService';
 import { Button } from '../ui/Button';
 import { X, Sparkles, Copy } from 'lucide-react';
 
 interface AIAssistantProps {
   guest: Guest;
+  rsvp?: GuestRSVP;
   onClose: () => void;
 }
 
-export const AIAssistant: React.FC<AIAssistantProps> = ({ guest, onClose }) => {
+export const AIAssistant: React.FC<AIAssistantProps> = ({ guest, rsvp, onClose }) => {
   const [generatedText, setGeneratedText] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleGenerate = async (type: 'invite' | 'thank_you' | 'reminder') => {
     setLoading(true);
-    const text = await generateGuestMessage(guest, type);
+    const text = await generateGuestMessage(guest, rsvp, type);
     setGeneratedText(text);
     setLoading(false);
   };

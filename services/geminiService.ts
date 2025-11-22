@@ -1,10 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
-import { Guest } from "../types";
+import { Guest, GuestRSVP } from "../types";
 
-const apiKey = process.env.API_KEY || '';
+const apiKey = import.meta.env.GEMINI_API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
-export const generateGuestMessage = async (guest: Guest, type: 'invite' | 'thank_you' | 'reminder'): Promise<string> => {
+export const generateGuestMessage = async (guest: Guest, rsvp?: GuestRSVP, type: 'invite' | 'thank_you' | 'reminder' = 'invite'): Promise<string> => {
   try {
     if (!apiKey) {
         return "API Key is missing. Please check environment configuration.";
@@ -14,9 +14,12 @@ export const generateGuestMessage = async (guest: Guest, type: 'invite' | 'thank
       You are a professional wedding concierge. Write a personalized ${type} message for a guest named ${guest.name}.
       
       Context:
-      - Guest Category: ${guest.category}
-      - Max Companions allowed: ${guest.maxCompanions}
-      - Current RSVP Status: ${guest.status}
+      - Guest Category: ${guest.category || 'Guest'}
+      - Max Adults allowed: ${guest.maxAdults}
+      - Max Children allowed: ${guest.maxChildren}
+      - Current RSVP Status: ${rsvp?.status || 'PENDING'}
+      - Confirmed Adults: ${rsvp?.adults || 0}
+      - Confirmed Children: ${rsvp?.children || 0}
       
       Tone: Elegant, warm, and sophisticated.
       Length: Short and concise (under 50 words), suitable for WhatsApp or Email.
@@ -39,10 +42,10 @@ export const analyzeGuestList = async (guests: Guest[]): Promise<string> => {
     try {
         if (!apiKey) return "API Key missing.";
 
-        const summary = guests.map(g => `- ${g.name} (${g.category}): ${g.status}`).join('\n');
+        const summary = guests.map(g => `- ${g.name} (${g.category || 'Guest'}): Max ${g.maxAdults} adults, ${g.maxChildren} children`).join('\n');
         
         const prompt = `
-            Analyze this wedding guest list and provide 3 brief, strategic insights for the wedding planner regarding seating arrangements or catering adjustments based on the mix of categories and confirmation status.
+            Analyze this wedding guest list and provide 3 brief, strategic insights for the wedding planner regarding seating arrangements or catering adjustments based on the mix of categories and guest capacity.
 
             List:
             ${summary}
