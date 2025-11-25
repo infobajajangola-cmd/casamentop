@@ -5,16 +5,25 @@ export enum RSVPStatus {
 }
 
 export enum GuestCategory {
-  FAMILY = 'Família',
+  FAMILY_BRIDE = 'Família da Noiva',
+  FAMILY_GROOM = 'Família do Noivo',
   FRIEND = 'Amigo',
   WORK = 'Trabalho',
   VIP = 'VIP'
+}
+
+export enum FamilySide {
+  BRIDE = 'Noiva',
+  GROOM = 'Noivo',
+  BOTH = 'Ambos',
+  NONE = 'Nenhum'
 }
 
 export interface Guest {
   id: string;
   name: string;
   category?: GuestCategory;
+  familySide?: FamilySide; // Lado da família
   maxAdults: number;
   maxChildren: number;
   createdAt: string; // ISO Date
